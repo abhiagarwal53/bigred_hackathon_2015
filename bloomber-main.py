@@ -11,6 +11,7 @@ from boto3.dynamodb.conditions import Key, Attr
 from flask import Flask
 #import boto3.dynamodb.table
 PROPAGATE_EXCEPTIONS=1
+AWS_REGION = 'us-east-1'
 # response = table.query(KeyConditionExpression = Key('Ticker').eq('ACRDTPV Index') & Key('Date').between('2012-01-01', '2012-06-30')
 
 # );
@@ -20,7 +21,7 @@ PROPAGATE_EXCEPTIONS=1
 # 			print i['Ticker'] + "key:" + key  + " " +i['Fields']['Value'][key];
 
 #  table = s3.Table('2012');
-s3 = boto3.resource('dynamodb');
+s3 = boto3.resource('dynamodb',region_name = AWS_REGION);
 app = Flask(__name__);
 
 # def getrow(row):
