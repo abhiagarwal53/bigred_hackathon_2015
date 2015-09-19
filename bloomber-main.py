@@ -4,11 +4,11 @@ import simplejson
 #import boto3.dynamodb.table
 #from boto.dynamodb2.table import Table
 
-import boto3
 import json
 import decimal
 from boto3.dynamodb.conditions import Key, Attr
-from flask import Flask
+from flask import Flask, render_template
+
 #import boto3.dynamodb.table
 PROPAGATE_EXCEPTIONS=1
 AWS_REGION = 'us-east-1'
@@ -32,6 +32,10 @@ app = Flask(__name__);
 # 	data['Units'] = row.get('Fields').get('Value').get('Units');
 # 	data['Frequency'] = row.get('Fields').get('Value').get('Frequency');
 # 	return data;
+
+@app.route('/')
+def index():
+	return render_template('index.html')
 
 @app.route('/api/v1.0/catalogs', methods=['GET'])
 def get_catalogs():
