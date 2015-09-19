@@ -1,6 +1,7 @@
 import boto3
 import boto3.dynamodb
 import simplejson
+import os
 #import boto3.dynamodb.table
 #from boto.dynamodb2.table import Table
 
@@ -54,14 +55,14 @@ def get_catalog(countryName):
 	for row in response['Items']:
 		tickerMap[row['Ticker']] = row;
 		response1 = table.query(KeyConditionExpression=Key('Ticker').eq(row['Ticker']));
-		row['values']=response1;
+		row['values']=response1['Items'];
 	return simplejson.dumps(tickerMap);
 # @app.route('/api/v1.0/catalog/hello', methods=['GET'])
 # def get_catalog():
 # 	table = s3.Table('Catalog');
 #  	response = table.scan();
 #  	return simplejson.dumps(response['Items']);
-
+port = int(os.environ.get('PORT', 5000)) 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True,port=port)
 
