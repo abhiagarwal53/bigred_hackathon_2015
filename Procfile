@@ -1,1 +1,1 @@
-python bloomber-main.py
+web: python bloomber-main.py
