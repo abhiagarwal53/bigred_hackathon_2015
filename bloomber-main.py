@@ -22,6 +22,7 @@ AWS_REGION = 'us-east-1'
 # 			print i['Ticker'] + "key:" + key  + " " +i['Fields']['Value'][key];
 
 #  table = s3.Table('2012');
+s3 = boto3.resource('dynamodb',region_name = AWS_REGION);
 app = Flask(__name__);
 
 # def getrow(row):
@@ -40,7 +41,6 @@ def index():
 @app.route('/api/v1.0/catalogs', methods=['GET'])
 def get_catalogs():
 	# Print out bucket names
-	s3 = boto3.resource('dynamodb',region_name = AWS_REGION);
 	table = s3.Table('Catalog');
 	response = table.scan();
 	return simplejson.dumps(response['Items']);
@@ -48,7 +48,6 @@ def get_catalogs():
 @app.route('/api/v1.0/data/country/<countryName>', methods=['GET'])
 def get_catalog(countryName):
 	# Print out bucket names
-	s3 = boto3.resource('dynamodb',region_name = AWS_REGION);
 	table = s3.Table('Catalog');
 	tickerMap = {};
 	response = table.scan(FilterExpression='contains(Description,:countryName)',ExpressionAttributeValues={':countryName':countryName},Limit=100)
