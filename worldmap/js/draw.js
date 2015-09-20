@@ -1,16 +1,3 @@
-<!DOCTYPE html>
-<meta charset="utf-8">
-<link rel="stylesheet" href="css/worldmap.css">
-</head>
-<body>
-
-  <div id="container"></div>
-<!--   <div class="detail"></div> -->
-
-<script src="js/d3.min.js"></script>
-<script src="js/topojson.v1.min.js"></script>
-<script src="js/queue.min.js"></script>
-<script>
 d3.select(window).on("resize", throttle);
 
 var zoom = d3.behavior.zoom()
@@ -35,15 +22,20 @@ var y = d3.scale.linear()
 var xAxis = d3.svg.axis()
   .scale(x)
   .orient("bottom")
-  .ticks(3);
+  .tickFormat(d3.time.format("%b"));
 
 var yAxis = d3.svg.axis()
   .scale(y)
-  .orient("left");
+  .orient("left")
+  .ticks(6);
 
 var line = d3.svg.line()
-  .x(function(d) { return x(d.year); })
-  .y(function(d) { return y(d.value); });
+  .x(function(d) { return x(d.Parsed); })
+  .y(function(d) { return y(d.Value); });
+
+var line2 = d3.svg.line()
+  .x(function(d) { return x(d.Parsed); })
+  .y(function(d) { return y(d.Value); });
 
 var topo,projection,path,svg,g;
 
@@ -51,7 +43,7 @@ var graticule = d3.geo.graticule();
 
 var tooltip = d3.select("#container").append("div").attr("class", "tooltip hidden");
 
-var map, gdp;
+var map, unemploy, unemployKeys;
 
 init(width,height);
 // initDetail(DUMMY);
@@ -76,13 +68,13 @@ function init(width,height){
 
 queue()
   .defer(d3.json, "data/world-topo-min.json")
-  .defer(d3.json, "data/sample.json")
+  .defer(d3.json, "data/unemploy.json")
   .await(ready);
 
-function ready(error, map, gdp) {
+function ready(error, map, data) {
+  unemploy = data;
+  unemployKeys = _.keys(unemploy);
   drawMap(map);
-  console.log(gdp);
-  console.log(map);
 }
 
 function drawMap(world) {
@@ -113,7 +105,14 @@ function draw(topo) {
       .attr("d", path)
       .attr("id", function(d,i) { return d.id; })
       .attr("title", function(d,i) { return d.properties.name; })
-      .style("fill", function(d, i) { return d.properties.color; });
+      .style("fill", function(d, i) { 
+        if (unemployKeys.indexOf(d.properties.name) > -1) {
+          
+          return unemploy[d.properties.name]["indicator"] > 0 ? "#e34a33" : "#addd8e";   
+        } else {
+          return "#969696";
+        }
+    });
 
   //offsets for tooltips
   var offsetL = document.getElementById('container').offsetLeft+20;
@@ -130,18 +129,53 @@ function draw(topo) {
              .attr("style", "left:"+(mouse[0]+offsetL)+"px;top:"+(mouse[1]+offsetT)+"px")
              .html(d.properties.name + '<div class="detail"></div>');
 
-      var DUMMY = [{year: "2014", value: 1}, {year: "2013", value: -1}, {year: "2012", value: 7}];
-      initDetail(DUMMY);
+      var unemployData;
+      unemployData = unemploy[d.properties.name];
+
+      if(unemployKeys.indexOf(d.properties.name) > -1) {
+        initDetail(unemployData); 
+      }
 
       })
       .on("mouseout",  function(d,i) {
         tooltip.classed("hidden", true);
       }); 
 
+  drawLegend();
+
+  function drawLegend() {
+    svg.append("circle")
+      .attr("cx", 12)
+      .attr("cy", height - 12)
+      .attr("r", 5)
+      .style("fill", "#addd8e");
+
+    svg.append("text")
+      .attr("class", "legend")
+      .attr("x", 20)
+      .attr("y", height - 8)
+      .text("Decreasing unemployment");
+
+    svg.append("circle")
+      .attr("cx", 12)
+      .attr("cy", height - 27)
+      .attr("r", 5)
+      .style("fill", "#e34a33");
+
+    svg.append("text")
+      .attr("class", "legend")
+      .attr("x", 20)
+      .attr("y", height - 23)
+      .text("Increasing unemployment");
+  }
 }
 
-function initDetail(data) {
-  var parseDate = d3.time.format("%Y").parse;
+function initDetail(unemployData) {
+  var data = _.reduceRight(_.pluck(unemployData, 'values'), function(a,b) { return a.concat(b); });
+
+  console.log(data);
+
+  var parseDate = d3.time.format("%Y-%m-%d").parse;
 
   var svg2 = d3.select(".detail").append("svg")
     .attr("width", width2 + margin.left + margin.right)
@@ -149,17 +183,15 @@ function initDetail(data) {
    .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  console.log(data);
-
   data.forEach(function(d) {
-    console.log(d.year);
-    d.year = parseDate(d.year);
+    d.Parsed = parseDate(d.Date);
   });
 
   console.log(data);
 
-  x.domain(d3.extent(data, function(d) { return d.year; }));
-  y.domain(d3.extent(data, function(d) { return d.value; }));
+  x.domain(d3.extent(data, function(d) { return d.Parsed; }));
+  y.domain(d3.extent(data, function(d) { return d.Value; }));
+  // y.domain([0, d3.max(data, function(d) { return d.Value; })]);
 
   svg2.append("g")
     .attr("class", "x axis")
@@ -174,12 +206,19 @@ function initDetail(data) {
     .attr("y", 6)
     .attr("dy", ".71em")
     .style("text-anchor", "end")
-    .text("Value");
+    .text("Unemployment ratio (%)");
 
   svg2.append("path")
     .datum(data)
     .attr("class", "line")
     .attr("d", line);
+
+  svg2.append("text")
+    .datum(data)
+    .attr("y", 0)
+    .attr("x", width2/2)
+    .text("Year 2014")
+    .style("text-anchor", "middle");
 }
 
 function redraw() {
@@ -190,14 +229,11 @@ function redraw() {
   draw(topo);
 }
 
-
 function move() {
-
   var t = d3.event.translate;
   var s = d3.event.scale; 
   zscale = s;
   var h = height/4;
-
 
   t[0] = Math.min(
     (width/height)  * (s - 1), 
@@ -214,10 +250,7 @@ function move() {
 
   //adjust the country hover stroke width based on zoom level
   d3.selectAll(".country").style("stroke-width", 1.5 / s);
-
 }
-
-
 
 var throttleTimer;
 function throttle() {
@@ -232,6 +265,9 @@ function throttle() {
 function click() {
   var latlon = projection.invert(d3.mouse(this));
   console.log(latlon);
+
+  // give query results
+  
 }
 
 
@@ -259,7 +295,3 @@ function addpoint(lat,lon,text) {
   }
 
 }
-
-</script>
-</body>
-</html>
