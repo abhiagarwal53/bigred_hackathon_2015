@@ -1,0 +1,11 @@
+<div class="row" ng-show ="!chartMaximumEnabled">
+        	<div ng-show = "zeroResults == 1" ><h3 style = "color:black">Unfortunately no data available</h3></div>
+            <div ng-repeat="chart in chartList" class="col-lg-4" ng-click = "expandTheGraph($index)">
+                <highchart id="chart" config="chart" class="span9" style="padding-top:20px;" ></highchart>
+            </div>
+        </div>
+        <div class="row" ng-show ="chartMaximumEnabled">
+            <div class="col-lg-12">
+                <highchart id="chartSpanned" config="selectedChartForMaxim" style="padding-top:20px;min-width:1100px;min-height:400px" ></highchart>
+            </div>
+        </div>
