@@ -2,7 +2,7 @@
 
 var API_CALL = '/api/v1.0/data/country/';
 
-var myapp = angular.module('myapp', ["highcharts-ng",'ui.bootstrap']);
+var myapp = angular.module('myapp', ["highcharts-ng",'ui.bootstrap','ngRoute']);
 
 myapp.controller('myctrl', ["$scope", "$http","appServices","$log", function($scope,$http,appServices,$log) {
 
@@ -138,6 +138,7 @@ myapp.controller('myctrl', ["$scope", "$http","appServices","$log", function($sc
         	$scope.zeroResults = 1;
         else
         	$scope.zeroResults = -1;
+        $scope.currentView = '/home';
         calculate($scope.data);
         $scope.formSubmitted = false;
       }, function(response) {
@@ -153,6 +154,8 @@ myapp.controller('myctrl', ["$scope", "$http","appServices","$log", function($sc
 	  $scope.date = this.dt;
 	  getChartsData(this.query,this.dt);
   }
+  
+  $scope.currentView = 'map';
 }]);
 
 myapp.factory('appServices',[function(){
