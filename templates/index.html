@@ -4,6 +4,7 @@
     <!-- Bootstrap core CSS -->
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/cover.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
@@ -27,17 +28,20 @@
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand header" href="#"><b style="color:#DE850E">Bloom</b>Graphs</a>
+      
+      <a class="navbar-brand header" href="#"><i class = "fa fa-bar-chart" style="font-size:32px;color:black"></i>&nbsp;<b style="color:#DE850E">Bloom</b>Graphs</a>
     </div>
 
     <!-- Collect the nav links, forms, and other content for toggling -->
     <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
       <form ng-submit="submit()" class="navbar-form navbar-left" role="search">
         <div class="form-group">
-          <input type="text" ng-model="query" class="form-control longer" placeholder="Search">
-         	     <input type="date" class="form-control" datepicker-popup ng-model="dt" close-text="Close" />
-           </div>
-           <button type="submit" class="btn btn-danger">Go!</button>
+          	<!-- <input type="text" ng-model="query" class="form-control longer" placeholder="Search"> -->
+          	<input type="text" ng-model="query"  typeahead="entry as entry.Description for entry in getSuggestions($viewValue)" 
+          	  class="form-control longer" typeahead-min-length = "2" typeahead-wait-ms="1000" typeahead-on-select="selectedTicker(query)">
+          	<input type="date" class="form-control" datepicker-popup ng-model="dt" close-text="Close" datepicker-mode='month' min-mode = 'month'/>
+          </div>
+           <button type="submit" class="btn btn-danger">Go</button>
         </div>
         
       </form>
@@ -48,13 +52,14 @@
 <div>
     <div class="container">
         <div class="row" ng-show ="!chartMaximumEnabled">
+        	<div ng-show = "zeroResults == 1" ><h3 style = "color:black">Unfortunately no data available</h3></div>
             <div ng-repeat="chart in chartList" class="col-lg-4" ng-click = "expandTheGraph($index)">
                 <highchart id="chart" config="chart" class="span9" style="padding-top:20px;" ></highchart>
             </div>
         </div>
         <div class="row" ng-show ="chartMaximumEnabled">
             <div class="col-lg-12">
-                <highchart id="chartSpanned" config="selectedChartForMaxim" class="span9" style="padding-top:20px;" ></highchart>
+                <highchart id="chartSpanned" config="selectedChartForMaxim" style="padding-top:20px;min-width:1100px;min-height:400px" ></highchart>
             </div>
         </div>
     </div>

@@ -4,7 +4,7 @@ var API_CALL = '/api/v1.0/data/country/';
 
 var myapp = angular.module('myapp', ["highcharts-ng",'ui.bootstrap']);
 
-myapp.controller('myctrl', ["$scope", "$http","appServices", function($scope,$http,appServices) {
+myapp.controller('myctrl', ["$scope", "$http","appServices","$log", function($scope,$http,appServices,$log) {
 
 //  $scope.data = {}{"JNSBALLI Index": {"Description": "Japan Small Business Confidence All Industries", "Ticker": "JNSBALLI Index", "Frequency": "Monthly", "values": [{"Date": "2014-01-31", "Ticker": "JNSBALLI Index", "Value": 51.3}, {"Date": "2014-02-28", "Ticker": "JNSBALLI Index", "Value": 50.6}, {"Date": "2014-03-31", "Ticker": "JNSBALLI Index", "Value": 53.5}, {"Date": "2014-04-30", "Ticker": "JNSBALLI Index", "Value": 45.4}, {"Date": "2014-05-31", "Ticker": "JNSBALLI Index", "Value": 46.6}, {"Date": "2014-06-30", "Ticker": "JNSBALLI Index", "Value": 47.3}, {"Date": "2014-07-31", "Ticker": "JNSBALLI Index", "Value": 48.7}, {"Date": "2014-08-31", "Ticker": "JNSBALLI Index", "Value": 47.7}, {"Date": "2014-09-30", "Ticker": "JNSBALLI Index", "Value": 47.6}, {"Date": "2014-10-31", "Ticker": "JNSBALLI Index", "Value": 47.4}, {"Date": "2014-11-30", "Ticker": "JNSBALLI Index", "Value": 47.7}, {"Date": "2014-12-31", "Ticker": "JNSBALLI Index", "Value": 46.7}], "Units": null, "Type": "Indicator"},
 //                "JNCPT Index": {"Description": "Japan CPI Tokyo YoY", "Ticker": "JNCPT Index", "Frequency": "Monthly", "values": [{"Date": "2014-01-31", "Ticker": "JNCPT Index", "Value": 0.7}, {"Date": "2014-02-28", "Ticker": "JNCPT Index", "Value": 1.1}, {"Date": "2014-03-31", "Ticker": "JNCPT Index", "Value": 1.3}, {"Date": "2014-04-30", "Ticker": "JNCPT Index", "Value": 2.9}, {"Date": "2014-05-31", "Ticker": "JNCPT Index", "Value": 3.1}, {"Date": "2014-06-30", "Ticker": "JNCPT Index", "Value": 3}, {"Date": "2014-07-31", "Ticker": "JNCPT Index", "Value": 2.8}, {"Date": "2014-08-31", "Ticker": "JNCPT Index", "Value": 2.8}, {"Date": "2014-09-30", "Ticker": "JNCPT Index", "Value": 2.8}, {"Date": "2014-10-31", "Ticker": "JNCPT Index", "Value": 2.5}, {"Date": "2014-11-30", "Ticker": "JNCPT Index", "Value": 2.1}, {"Date": "2014-12-31", "Ticker": "JNCPT Index", "Value": 2.2}], "Units": "% CHANGE", "Type": "Indicator"},
@@ -51,8 +51,9 @@ myapp.controller('myctrl', ["$scope", "$http","appServices", function($scope,$ht
       $scope.chartConfig = {
         options: {
           chart: {
-            type: 'areaspline',
-            height: 300
+            type: 'spline',
+            height: 300,
+            zoomType: 'x'
           },
           plotOptions: {
             series: {
@@ -72,9 +73,39 @@ myapp.controller('myctrl', ["$scope", "$http","appServices", function($scope,$ht
         },
         loading: false,
         size: {},
-       // zoomType : 'x',
         xAxis: appServices.getXAxisConfig(d,i,$scope.data[d.name]),
-        yAxis: appServices.getYAxisConfig(d,i,$scope.data[d.name])
+        yAxis: appServices.getYAxisConfig(d,i,$scope.data[d.name]),
+        rangeSelector : {
+            allButtonsEnabled: true,
+            buttons: [{
+                type: 'month',
+                count: 3,
+                text: 'Day',
+                dataGrouping: {
+                    forced: true,
+                    units: [['day', [1]]]
+                }
+            }, {
+                type: 'year',
+                count: 1,
+                text: 'Week',
+                dataGrouping: {
+                    forced: true,
+                    units: [['week', [1]]]
+                }
+            }, {
+                type: 'all',
+                text: 'Month',
+                dataGrouping: {
+                    forced: true,
+                    units: [['month', [1]]]
+                }
+            }],
+            buttonTheme: {
+                width: 60
+            },
+            selected: 2
+        }
       }
 
       $scope.chartList.push($scope.chartConfig);
@@ -83,22 +114,45 @@ myapp.controller('myctrl', ["$scope", "$http","appServices", function($scope,$ht
 
   $scope.query = '';
 
-  $scope.submit = function() {
-	  $scope.chartMaximumEnabled = false,
-    $scope.query = this.query;
-
-    $http.get(API_CALL + $scope.query).
+  $scope.getSuggestions = function(word) {
+	  if(!$scope.formSubmitted) {
+		  return $http.get('/api/v1.0/data/suggestions/'+word).then(function(response){
+		      return response.data
+		    });
+	  }
+	  
+  };
+  
+  $scope.selectedTicker = function(query) {
+	  getChartsData(query.Description,null);
+  }
+  
+  var getChartsData = function(query,date) {
+	  var url = API_CALL + query;
+	  if(date != null)
+		  url+"/"+date;
+	  $http.get(url).
       then(function(response) {
         $scope.data = response.data;
+        if(Object.keys($scope.data).length == 0)
+        	$scope.zeroResults = 1;
+        else
+        	$scope.zeroResults = -1;
         calculate($scope.data);
-
-        console.log($scope.data);
-
+        $scope.formSubmitted = false;
       }, function(response) {
-        // error
+        $log.error("Some error occured" + response);
+        $scope.formSubmitted = false;
     });
+  };
+  
+  $scope.submit = function() {
+	  $scope.formSubmitted = true;
+	  $scope.chartMaximumEnabled = false,
+	  $scope.query = this.query;
+	  $scope.date = this.dt;
+	  getChartsData(this.query,this.dt);
   }
-
 }]);
 
 myapp.factory('appServices',[function(){
@@ -108,22 +162,12 @@ myapp.factory('appServices',[function(){
 			var units = tickerObject['Units'];
 			var frequency = tickerObject['Frequency'];
 			var xunitslabel ;
-			if(frequency === 'Monthly') {
-//				xunitslabel = {
-//					month: '%b'
-//					year : '%Y'
-//				}
-			} else {
-				//xunitslabel = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct", "Nov", "Dec"];
-			}
 			var x = {
-			         
 			         units:units,
 			         type: 'datetime',
 			         minTickInterval: 3600*24*30,
 			         minRange: 3600*24*30*1000,
 			         ordinal : false
-			         //dateTimeLabelFormats : xunitslabel
 			        };
 			return x;
 		},
