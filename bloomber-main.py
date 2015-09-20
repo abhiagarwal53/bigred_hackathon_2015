@@ -11,6 +11,8 @@ from flask import Flask, render_template
 PROPAGATE_EXCEPTIONS=1
 AWS_REGION = 'us-east-1'
 
+AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
+AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
 s3 = boto3.resource('dynamodb',region_name = AWS_REGION);
 app = Flask(__name__);
 
@@ -58,10 +60,7 @@ def get_data_for_attribute(attributeName,year):
 			elif(val>0):
 				economic_data['indicator'] = +1;
 			else:
-				economic_data['indicator'] = 0;
-				
-				
-
+				economic_data['indicator'] = 0;  
 
 	return simplejson.dumps(countryWiseData);			
 
@@ -70,6 +69,14 @@ def get_data_for_attribute(attributeName,year):
 @app.route('/')
 def index():
 	return render_template('index.html')
+
+@app.route('/map')
+def map():
+	return render_template('map.html')
+
+@app.route('/home')
+def home():
+	return render_template('home.html')	
 
 @app.route('/api/v1.0/catalogs', methods=['GET'])
 def get_catalogs():
@@ -84,12 +91,22 @@ def get_data_for_country(countryName):
 	table = s3.Table('Catalog');
 	tickerMap = {};
 	response = table.scan(FilterExpression='contains(Description,:countryName)',ExpressionAttributeValues={':countryName':countryName},Limit=100)
+	response2 = table.query(KeyConditionExpression=Key('Ticker').eq(countryName))
 	table = s3.Table('2014');
 	for row in response['Items']:
 		tickerMap[row['Ticker']] = row;
 		response1 = table.query(KeyConditionExpression=Key('Ticker').eq(row['Ticker']));
 		row['values']=response1['Items'];
+	for row in response2['Items']:
+		if(tickerMap.get(row['Ticker']) != None):
+			continue;
+		tickerMap[row['Ticker']] = row;
+		response1 = table.query(KeyConditionExpression=Key('Ticker').eq(row['Ticker']));
+		row['values']=response1['Items'];
+		
 	return simplejson.dumps(tickerMap);
+	
+
 
 @app.route('/api/v1.0/data/country/<countryName>/<year>', methods=['GET'])
 def get_data_for_country_per_year(countryName,year):
@@ -103,6 +120,18 @@ def get_data_for_country_per_year(countryName,year):
 		response1 = table.query(KeyConditionExpression=Key('Ticker').eq(row['Ticker']));
 		row['values']=response1['Items'];
 	return simplejson.dumps(tickerMap);
+
+
+@app.route('/api/v1.0/data/suggestions/<word>', methods=['GET'])
+def get_suggestions(word):
+	# Print out bucket names
+	table = s3.Table('Catalog');
+	tickerMap = [];
+	response = table.scan(ProjectionExpression='Ticker,Description',FilterExpression='contains(Description,:word)',ExpressionAttributeValues={':word':word})
+	for row in response['Items']:
+		tickerMap.append(row);
+	return simplejson.dumps(tickerMap);
+
 
 port = int(os.environ.get('PORT', 5000)) 
 if __name__ == "__main__":
