@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<link rel="stylesheet" href="css/worldmap.css">
+</head>
+<body>
+
+  <div id="container"></div>
+<!--   <div class="detail"></div> -->
+
+<script src="js/d3.min.js"></script>
+<script src="js/topojson.v1.min.js"></script>
+<script src="js/queue.min.js"></script>
+<script>
+d3.select(window).on("resize", throttle);
+
+var zoom = d3.behavior.zoom()
+    .scaleExtent([1, 9])
+    .on("zoom", move);
+
+var width = document.getElementById('container').offsetWidth;
+var height = width / 2;
+
+var margin = {top: 20, right: 20, bottom: 30, left: 50},
+    width2 = width * .3,
+    height2 = width2/2;
+
+var colors = d3.scale.category10();
+
+var x = d3.time.scale()
+  .range([0, width2]);
+
+var y = d3.scale.linear()
+  .range([height2, 0]);
+
+var xAxis = d3.svg.axis()
+  .scale(x)
+  .orient("bottom")
+  .ticks(3);
+
+var yAxis = d3.svg.axis()
+  .scale(y)
+  .orient("left");
+
+var line = d3.svg.line()
+  .x(function(d) { return x(d.year); })
+  .y(function(d) { return y(d.value); });
+
+var topo,projection,path,svg,g;
+
+var graticule = d3.geo.graticule();
+
+var tooltip = d3.select("#container").append("div").attr("class", "tooltip hidden");
+
+var map, gdp;
+
+init(width,height);
+// initDetail(DUMMY);
+
+function init(width,height){
+  projection = d3.geo.mercator()
+    .translate([(width/2), (height/2)])
+    .scale( width / 2 / Math.PI);
+
+  path = d3.geo.path().projection(projection);
+
+  svg = d3.select("#container").append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .call(zoom)
+      //.on("click", click)
+      .append("g");
+
+  g = svg.append("g")
+         .on("click", click);
+}
+
+queue()
+  .defer(d3.json, "data/world-topo-min.json")
+  .defer(d3.json, "data/sample.json")
+  .await(ready);
+
+function ready(error, map, gdp) {
+  drawMap(map);
+  console.log(gdp);
+  console.log(map);
+}
+
+function drawMap(world) {
+  var countries = topojson.feature(world, world.objects.countries).features;
+
+  topo = countries;
+  draw(topo);
+  console.log(topo); 
+}
+
+function draw(topo) {
+
+  svg.append("path")
+     .datum(graticule)
+     .attr("class", "graticule")
+     .attr("d", path);
+
+  g.append("path")
+   .datum({type: "LineString", coordinates: [[-180, 0], [-90, 0], [0, 0], [90, 0], [180, 0]]})
+   .attr("class", "equator")
+   .attr("d", path);
+
+
+  var country = g.selectAll(".country").data(topo);
+
+  country.enter().insert("path")
+      .attr("class", "country")
+      .attr("d", path)
+      .attr("id", function(d,i) { return d.id; })
+      .attr("title", function(d,i) { return d.properties.name; })
+      .style("fill", function(d, i) { return d.properties.color; });
+
+  //offsets for tooltips
+  var offsetL = document.getElementById('container').offsetLeft+20;
+  var offsetT = document.getElementById('container').offsetTop+10;
+
+  //tooltips
+  country
+    .on("mousemove", function(d,i) {
+
+      var mouse = d3.mouse(svg.node()).map( function(d) { return parseInt(d); } );
+
+      tooltip.classed("hidden", false)
+             .attr("id", d.properties.name.toLowerCase())
+             .attr("style", "left:"+(mouse[0]+offsetL)+"px;top:"+(mouse[1]+offsetT)+"px")
+             .html(d.properties.name + '<div class="detail"></div>');
+
+      var DUMMY = [{year: "2014", value: 1}, {year: "2013", value: -1}, {year: "2012", value: 7}];
+      initDetail(DUMMY);
+
+      })
+      .on("mouseout",  function(d,i) {
+        tooltip.classed("hidden", true);
+      }); 
+
+}
+
+function initDetail(data) {
+  var parseDate = d3.time.format("%Y").parse;
+
+  var svg2 = d3.select(".detail").append("svg")
+    .attr("width", width2 + margin.left + margin.right)
+    .attr("height", height2 + margin.top + margin.bottom)
+   .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  console.log(data);
+
+  data.forEach(function(d) {
+    console.log(d.year);
+    d.year = parseDate(d.year);
+  });
+
+  console.log(data);
+
+  x.domain(d3.extent(data, function(d) { return d.year; }));
+  y.domain(d3.extent(data, function(d) { return d.value; }));
+
+  svg2.append("g")
+    .attr("class", "x axis")
+    .attr("transform", "translate(0," + height2 + ")")
+    .call(xAxis);
+
+  svg2.append("g")
+    .attr("class", "y axis")
+    .call(yAxis)
+   .append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("y", 6)
+    .attr("dy", ".71em")
+    .style("text-anchor", "end")
+    .text("Value");
+
+  svg2.append("path")
+    .datum(data)
+    .attr("class", "line")
+    .attr("d", line);
+}
+
+function redraw() {
+  width = document.getElementById('container').offsetWidth;
+  height = width / 2;
+  d3.select('svg').remove();
+  init(width,height);
+  draw(topo);
+}
+
+
+function move() {
+
+  var t = d3.event.translate;
+  var s = d3.event.scale; 
+  zscale = s;
+  var h = height/4;
+
+
+  t[0] = Math.min(
+    (width/height)  * (s - 1), 
+    Math.max( width * (1 - s), t[0] )
+  );
+
+  t[1] = Math.min(
+    h * (s - 1) + h * s, 
+    Math.max(height  * (1 - s) - h * s, t[1])
+  );
+
+  zoom.translate(t);
+  g.attr("transform", "translate(" + t + ")scale(" + s + ")");
+
+  //adjust the country hover stroke width based on zoom level
+  d3.selectAll(".country").style("stroke-width", 1.5 / s);
+
+}
+
+
+
+var throttleTimer;
+function throttle() {
+  window.clearTimeout(throttleTimer);
+    throttleTimer = window.setTimeout(function() {
+      redraw();
+    }, 200);
+}
+
+
+//geo translation on mouse click in map
+function click() {
+  var latlon = projection.invert(d3.mouse(this));
+  console.log(latlon);
+}
+
+
+//function to add points and text to the map (used in plotting capitals)
+function addpoint(lat,lon,text) {
+
+  var gpoint = g.append("g").attr("class", "gpoint");
+  var x = projection([lat,lon])[0];
+  var y = projection([lat,lon])[1];
+
+  gpoint.append("svg:circle")
+        .attr("cx", x)
+        .attr("cy", y)
+        .attr("class","point")
+        .attr("r", 1.5);
+
+  //conditional in case a point has no associated text
+  if(text.length>0){
+
+    gpoint.append("text")
+          .attr("x", x+2)
+          .attr("y", y+2)
+          .attr("class","text")
+          .text(text);
+  }
+
+}
+
+</script>
+</body>
+</html>
