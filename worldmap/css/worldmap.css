@@ -8,7 +8,7 @@
 }
 #container {
   margin:10px 10%;
-  border:2px solid #000;
+/*  border:2px solid #000;*/
   border-radius: 5px;
   height:100%;
   overflow:hidden;
@@ -57,4 +57,8 @@ div.tooltip {
 
 .detail {
   font: 10px sans-serif;
+}
+
+.legend {
+  font: 12px sans-serif;
 }
