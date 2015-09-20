@@ -181,3 +181,9 @@ position: absolute;
 .form-control.longer {
   width: 500px;
 }
+
+.header {
+  font-size: 26px;
+    font-family: initial;
+}
+
