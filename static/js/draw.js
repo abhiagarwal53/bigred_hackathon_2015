@@ -107,8 +107,8 @@ function draw(topo) {
       .attr("title", function(d,i) { return d.properties.name; })
       .style("fill", function(d, i) { 
         if (unemployKeys.indexOf(d.properties.name) > -1) {
-          
-          return unemploy[d.properties.name]["indicator"] > 0 ? "#e34a33" : "#addd8e";   
+          console.log(unemploy[d.properties.name]);
+          return unemploy[d.properties.name][0].indicator > 0 ? "#e34a33" : "#addd8e";   
         } else {
           return "#969696";
         }
